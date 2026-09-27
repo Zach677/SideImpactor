@@ -308,6 +308,30 @@ async function handleWispSession(serverSocket: WebSocket, path: string): Promise
   await conn.run();
 }
 
+const SECURITY_HEADERS: Record<string, string> = {
+  "cross-origin-opener-policy": "same-origin",
+  "cross-origin-embedder-policy": "require-corp",
+  "x-content-type-options": "nosniff",
+  "x-frame-options": "DENY",
+  "referrer-policy": "strict-origin-when-cross-origin",
+};
+
+function withSecurityHeaders(response: Response): Response {
+  const headers = new Headers(response.headers);
+  for (const [key, value] of Object.entries(SECURITY_HEADERS)) {
+    headers.set(key, value);
+  }
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
+}
+
+async function serveAssets(request: Request, env: Env): Promise<Response> {
+  return withSecurityHeaders(await env.ASSETS.fetch(request));
+}
+
 function json(status: number, body: unknown): Response {
   return new Response(JSON.stringify(body), {
     status,
@@ -322,7 +346,8 @@ export default {
   async fetch(request, env, ctx): Promise<Response> {
     const url = new URL(request.url);
 
-    if (url.pathname === "/" || url.pathname === "/healthz") {
+    // Health only — keep `/` for the SPA shell via Assets.
+    if (url.pathname === "/healthz") {
       return json(200, {
         ok: true,
         service: "webmuxd-wisp-demo",
@@ -375,6 +400,6 @@ export default {
       });
     }
 
-    return await env.ASSETS.fetch(request);
+    return await serveAssets(request, env);
   },
 } satisfies ExportedHandler<Env>;

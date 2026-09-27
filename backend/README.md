@@ -15,7 +15,7 @@ The Worker also serves static files from `../frontend/dist` via Wrangler `assets
 ## What this demo supports
 
 - `GET /healthz` health check
-- `WS /wisp/` Wisp v2 server path
+- `WS /wisp/` Wisp v1 server path (configured for this demo)
 - Apple host allowlist + port `443` only
 - Optional token auth (`?token=...`)
 
@@ -65,6 +65,15 @@ Actions**:
 Create the token from the Cloudflare dashboard's **Manage Account → Account API
 Tokens** page. Find the account ID on the target account's Cloudflare dashboard
 overview page.
+
+
+## Hardening notes
+
+- `assets.run_worker_first` lists `/wisp`, `/wisp/*`, and `/healthz` so WebSocket
+  upgrades and health checks are never swallowed by SPA `not_found_handling`.
+- Static asset responses get COOP/COEP (and related) headers so signing WASM can
+  use `SharedArrayBuffer`, matching the Docker `nginx.conf` intent.
+- `GET /healthz` is the only health JSON route. `/` is served by the frontend SPA.
 
 ## Optional auth
 
